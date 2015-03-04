@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blocks &amp; Guidelines</title>
+    <script src='https://code.jquery.com/jquery-2.1.3.min.js' type='application/javascript'></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/ace/1.1.8/ace.js' type='application/javascript'></script>
+    <script src='./js/blocks.and.guidelines.js' type='application/javascript'></script>
+    <script src='./js/rapheal-min.js' type='application/javascript'></script>
+    <style>
+    body {
+        position: absolute;
+        display: flex;
+        min-width: 850px;
+        font-family: Verdana, Geneva, sans-serif;
+    }
+    #rendering-context {
+        position: absolute;
+        display: initial;
+        padding-right:100px;
+    }
+    #canvas{
+        position: absolute;
+    }
+    #tooltip{
+        position:absolute;
+        background-color: rgba(255,255,255,0.6);
+        border-radius: 8px;
+
+        border: 1px grey solid;
+        padding: 5px;
+    }
+    .block {
+        position: relative;
+        border: 1px grey solid;
+        margin: 10px;
+        margin-right:25px;
+        padding: 5px;
+        background-color: inherit;
+        border-radius: 5px;
+    }
+    #editor {
+        position: absolute;
+    }
+    .guide{
+        position: absolute;
+        border-right: 1px grey solid;
+        border-top: 1px grey solid;
+        border-bottom: 1px grey solid;
+        padding: 0px;
+        margin:0px;
+    }
+
+    .domain{
+        background-color: rgba(255, 139, 35, 0.22);
+    }
+    .abstraction{
+        background-color: rgba(255, 249, 0, 0.22);
+    }
+    .encoding{
+        background-color: rgba(145, 230, 70, 0.22);
+    }   
+    .algorithm{
+        background-color: rgba(71, 113, 255, 0.22);
+    }
+    </style>
+</head>
+
+<body>
+    <div id='rendering-context'>
+    </div>
+    <div id="editor">
+// Type ctrl+enter or cmd+enter to evaluate the diagram. 
+
+court_data = bg_diagram();
+
+court_data
+    .domain_characterization(0,"Is this a generalist or specialist?", [
+        block(1,"Is her portfolio diverse?", [
+            block(2,"Now?"),
+            block(3,"Over time?")
+        ]),
+    ])
+    .domain_characterization(4,"If this is attorney is a specialist, in what area?", [
+        block(5,"Do specialists tend to stay specialists over time?"),
+        block(6,"Do generalists tend to stay generalists over time?"),
+    ])
+    .domain_characterization(7,"Do certain types of cases tend to cluster together?", [
+        block(8,"Are certain types of cases correlated?")
+    ])
+    .domain_characterization(9,"Can we see the effects of exogenous events on portfolio diversity?")
+    .abstraction(10,'Test')
+    .guideline(2,10);
+
+    </div>
+    <div id='canvas'></div>
+    <div id='tooltip' hidden></div>
+</body>
+<script>
+
+// Global svg overlay
+paper = Raphael("canvas", 640, 480);
+render_bg_diagram = function(bg_diagram_instance){
+    
+    var header = function(text){
+        var c = $('<h4></h4>');
+        c.html(text);
+        return c;
+    }
+
+    var guideTable = {};
+
+    var render_blocks = function rec (htmlement, block_list){
+        var self = this;
+        for(var i in block_list){
+            (function(block){
+                var container = $('<div></div>');
+                container.addClass('block');
+                container.html(block.notes);
+                if(typeof(block.content) != undefined){
+                    rec(container,block.content);
+                }
+                htmlement.append(container);
+                guideTable[block.name] = {'obj':        container, 
+                                          'connCount':  0.0, 
+                                          'connOffset': 0.0};
+            })(block_list[i]);
+        }
+    }
+    var w = $(window).width()*0.40;
+
+    var diagram = $('<div></div>');
+    diagram.css('position','relative');
+
+    var dc = $('<div></div>');
+    dc.addClass('block')
+      .addClass('domain')
+      .css('width', w - 160);
+    dc.append(header('Domain Characterization'));
+    render_blocks(dc, bg_diagram_instance._domain_characterization);
+    
+    var ab = $('<div></div>');
+    ab.addClass('block')
+      .addClass('abstraction')
+      .css('margin-left', 30)
+      .css('width', w - 130);
+    ab.append(header('Abstraction'));
+    render_blocks(ab, bg_diagram_instance._abstractions);
+
+    
+    var et = $('<div></div>');
+    et.addClass('block')
+      .addClass('encoding')
+      .css('margin-left', 60)
+      .css('width', w - 100);
+    et.append(header('Encodings and Techniques'));
+    render_blocks(et, bg_diagram_instance._encodings);
+
+    var al = $('<div></div>');
+    al.addClass('block')
+      .addClass('algorithm')
+      .css('margin-left', 90)
+      .css('width', w - 70);
+    al.append(header('Algorithms'));
+    render_blocks(al, bg_diagram_instance._algorithms);
+
+    diagram.append(dc)
+           .append(ab)
+           .append(et)
+           .append(al);
+
+    // initialize the guides with some extra layout information
+    for(var i in bg_diagram_instance._guidelines){
+        var g = bg_diagram_instance._guidelines[i];
+        guideTable[g.to]['connCount'] = guideTable[g.to]['connCount'] + 1.0;
+        guideTable[g.from]['connCount'] = guideTable[g.from]['connCount'] + 1.0;;
+    }
+
+    // Then render the guidelines.
+    // Since everything else has to happen (render) in order to resolve 
+    //   the positions set a timeout for a few milliseconds after.
+    setTimeout(function(){
+        paper.clear();
+        for(var i in bg_diagram_instance._guidelines){
+            (function(guide){
+                
+                var from = guideTable[guide.from];
+                var to = guideTable[guide.to];
+                var parent = from.obj.parents().has(to.obj).first(); // Find the common parent.
+                // Random horizontal offset, to avoid doing intelligent (hard) routing
+                var hoffset = (Math.random()*50.0);
+                // Vertical offsets (heuristic to get decent (non-overlapping) end points)
+                var toVoff = (to.connOffset / to.connCount) * to.obj.height();
+                var fromVoff = (from.connOffset / from.connCount) * from.obj.height();
+                to.connOffset = to.connOffset + 1.0;
+                from.connOffset = from.connOffset + 1.0;
+                // For short hand while constructing the path -- 
+                //   plus we don't really need the other information any more.
+                to = to.obj;
+                from = from.obj;
+
+                // Construct an svg path. Refer to the Raphael docs.
+                var d = "M"  + (from.offset().left + from.width() + 4) + " " + (from.offset().top + fromVoff) +
+                        " L" + (parent.width() + hoffset)+               " " + (from.offset().top + fromVoff)+
+                        // Notice the relative positioning step here. 
+                        " l0 "                                               + ((to.offset().top + toVoff) - (from.offset().top + fromVoff)) +
+                        " L" + (to.offset().left + to.width() + 4) +     " " + (to.offset().top + toVoff);
+                
+                // Actually draw the path and set some useful properties.
+                var p = paper.path(d);
+                p.attr('stroke', 'rgba(50,50,50,0.5)')
+                 .attr('stroke-width', '3')
+                 .attr('arrow-end', 'classic-wide-long')
+                 // Show a tooltip at the mouse location with the guide notes.
+                 .mouseover(function(event){
+                    if(typeof(guide.notes) != 'undefined'){
+                        var mx = event.clientX;
+                        var my = event.clientY;
+                    
+                        $('#tooltip').html(guide.notes)
+                                     .css('margin-left', mx + 25)
+                                     .css('margin-top' , my - 25)
+                                     .show();
+                    }
+
+                 })
+                 // Make it go away again.
+                 .mouseout(function(){
+                    $('#tooltip').html('').hide();
+                 });
+
+                // Cute hacky workaround for discovering between level guidelines.
+                if(from.css('background-color') != to.css('background-color')){
+                    p.attr('stroke', 'rgba(0,0,250,0.5)');
+                }
+            })(bg_diagram_instance._guidelines[i]);
+        }
+       
+    }, 10)
+    return diagram;
+}
+
+var editor = ace.edit("editor");
+editor.setTheme("ace/theme/chrome");
+editor.getSession().setMode("ace/mode/javascript");
+
+editor.commands.addCommand({
+    name: 'run',
+    bindKey: {
+        win: 'Ctrl-Enter',
+        mac: 'Command-Enter'
+    },
+    exec: function(editor) {
+
+        var diagram = $('#rendering-context');
+        diagram.empty();
+        eval(editor.getValue());
+        var result = render_bg_diagram(court_data);
+        diagram.append(result);
+        onResized();
+    },
+    readOnly: false // false if this command should not apply in readOnly mode
+});
+
+var onResized = function(){
+    var w = $(window).width();
+    var h = $(window).height();
+    $('#rendering-context').width(w*0.40);
+    $('#editor').width(w*0.49)
+                .css('margin-left',w*0.50)
+                .css('height',h*0.98); 
+    paper.setSize(w*0.45, $('#rendering-context').height());
+    var diagram = $('#rendering-context');
+    diagram.empty();
+    eval(editor.getValue());
+    var result = render_bg_diagram(court_data);
+    diagram.append(result);
+}
+
+$(window).resize(onResized);
+
+$(function(){
+    var diagram = $('#rendering-context');
+    diagram.empty();
+    eval(editor.getValue());
+    var result = render_bg_diagram(court_data);
+    diagram.append(result);
+    onResized();
+})
+</script>
+
+</html>
