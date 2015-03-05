@@ -246,7 +246,9 @@ render_bg_diagram = function(bg_diagram_instance){
 var editor = ace.edit("editor");
 editor.setTheme("ace/theme/chrome");
 editor.getSession().setMode("ace/mode/javascript");
-
+$(window).scroll(function(){
+    $("#editor").css('margin-top',$(window).scrollTop());
+});
 editor.commands.addCommand({
     name: 'run',
     bindKey: {
