@@ -276,7 +276,8 @@ var onResized = function(){
     var w = $(window).width();
     var h = $(window).height();
     $('#rendering-context').width(w*0.40);
-    $('#editor').width(w*0.49)
+    $('#editor').width(w*0.48)
+                .height(h*0.98)
                 .css('margin-left',w*0.50)
                 .css('height',h*0.98); 
     paper.setSize(w*0.45, $('#rendering-context').height());
