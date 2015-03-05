@@ -243,12 +243,18 @@ render_bg_diagram = function(bg_diagram_instance){
     return diagram;
 }
 
+function render(){
+    var diagram = $('#rendering-context');
+    diagram.empty();
+    eval(editor.getValue());
+    var result = render_bg_diagram(court_data);
+    diagram.append(result);
+}
+
 var editor = ace.edit("editor");
 editor.setTheme("ace/theme/chrome");
 editor.getSession().setMode("ace/mode/javascript");
-$(window).scroll(function(){
-    $("#editor").css('margin-top',$(window).scrollTop());
-});
+
 editor.commands.addCommand({
     name: 'run',
     bindKey: {
@@ -256,15 +262,14 @@ editor.commands.addCommand({
         mac: 'Command-Enter'
     },
     exec: function(editor) {
-
-        var diagram = $('#rendering-context');
-        diagram.empty();
-        eval(editor.getValue());
-        var result = render_bg_diagram(court_data);
-        diagram.append(result);
+        render();
         onResized();
     },
     readOnly: false // false if this command should not apply in readOnly mode
+});
+
+editor.on('change',function(e){
+    localStorage['save'] = editor.getValue();
 });
 
 var onResized = function(){
@@ -275,14 +280,14 @@ var onResized = function(){
                 .css('margin-left',w*0.50)
                 .css('height',h*0.98); 
     paper.setSize(w*0.45, $('#rendering-context').height());
-    var diagram = $('#rendering-context');
-    diagram.empty();
-    eval(editor.getValue());
-    var result = render_bg_diagram(court_data);
-    diagram.append(result);
+    render();
 }
 
 $(window).resize(onResized);
+
+$(window).scroll(function(){
+    $("#editor").css('margin-top',$(window).scrollTop());
+});
 
 $(function(){
     var diagram = $('#rendering-context');
@@ -291,6 +296,10 @@ $(function(){
     var result = render_bg_diagram(court_data);
     diagram.append(result);
     onResized();
+    if(localStorage['save'] != ''){
+        editor.setValue(localStorage['save']);
+        render();
+    }
 })
 </script>
 
