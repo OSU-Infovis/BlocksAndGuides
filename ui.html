@@ -24,14 +24,34 @@
     }
     #canvas{
         position: absolute;
+        pointer-events:none;
     }
     #tooltip{
         position:absolute;
         background-color: rgba(255,255,255,0.6);
         border-radius: 8px;
-
         border: 1px grey solid;
         padding: 5px;
+    }
+    .addlevel{
+        position: absolute;
+        top:-4px;
+        right: 0px;
+        font-size: large;
+        color:grey;
+    }
+    .connector{
+        position: absolute;
+        top: 50%;
+        right: -12px;
+        width:10px;
+        height:10px;
+        border-radius: 10px;
+        border:1px grey solid;
+        background-color: rgba(255,255,255,0.0);
+    }
+    .connector:hover{
+        background-color: rgba(0,0,255,0.5);
     }
     .block {
         position: relative;
@@ -118,8 +138,24 @@ render_bg_diagram = function(bg_diagram_instance){
         for(var i in block_list){
             (function(block){
                 var container = $('<div></div>');
+                var addElt = $('<span>+</span>');
+                addElt.addClass('addlevel');
+                var connector = $('<div></div>');
+                connector.addClass('connector');
+                
                 container.addClass('block');
-                container.html(block.notes);
+                container.click(function(e){
+                    e.stopPropagation();
+                    container.attr('contentEditable','true');
+                }).focusout(function(){
+                    e.stopPropagation();
+                    container.attr('contentEditable','false');
+                });
+                
+                container.append(addElt)
+                         .append(connector)
+                         .append($('<p>'+block.notes+'</p>'));
+                
                 if(typeof(block.content) != undefined){
                     rec(container,block.content);
                 }
