@@ -39,6 +39,15 @@
         right: 0px;
         font-size: large;
         color:grey;
+        cursor:pointer;
+    }
+    .close{
+        position: absolute;
+        top:-4px;
+        left: 0px;
+        font-size: large;
+        color:grey;
+        cursor:pointer;
     }
     .connector{
         position: absolute;
@@ -49,6 +58,9 @@
         border-radius: 10px;
         border:1px grey solid;
         background-color: rgba(255,255,255,0.0);
+    }
+    .connector.selected{
+        background-color: rgba(0,0,255,0.5);
     }
     .connector:hover{
         background-color: rgba(0,0,255,0.5);
@@ -98,23 +110,88 @@
 court_data = bg_diagram();
 
 court_data
-    .domain_characterization(0,"Is this a generalist or specialist?", [
+    .domain_characterization(12, "Who are the most/least diversified attorneys?",[
+        block(13, "For a particular year"),
+        block(14, "For a span of years")])
+    .domain_characterization(0,"Is this attorney a generalist or specialist?", [
         block(1,"Is her portfolio diverse?", [
             block(2,"Now?"),
             block(3,"Over time?")
         ]),
+        block(5,"If this is attorney is a specialist, in what area?"),
     ])
-    .domain_characterization(4,"If this is attorney is a specialist, in what area?", [
-        block(5,"Do specialists tend to stay specialists over time?"),
+    .domain_characterization(4,"Are there patterns to movement between generalist and specialist", [
         block(6,"Do generalists tend to stay generalists over time?"),
+        block(7,"Do specialists tend to stay specialists over time?"),
+        block('changes', "When and how often do attorneys change speciality?"),
+        
     ])
-    .domain_characterization(7,"Do certain types of cases tend to cluster together?", [
-        block(8,"Are certain types of cases correlated?")
+    .domain_characterization('party type', "Does specialization vary by party type?")
+    .domain_characterization("specialists", "Do the number of specialists in an area vary over time?")
+    .domain_characterization(8,"Do certain types of cases tend to cluster together?", [
+        block(9,"Are certain types of cases correlated?")
     ])
-    .domain_characterization(9,"Can we see the effects of exogenous events on portfolio diversity?")
-    .abstraction(10,'Test')
-    .guideline(2,10);
-
+    .domain_characterization(10,"Can we see the effects of exogenous events on portfolio diversity?")
+    .abstraction(11,'Court Case', [
+        block(15, "attorney:nominal"),
+        block(16, "judge:nominal"),
+        block(17, "date:quantitative/interval"),
+        block(18, "majorCode: nominal"),
+        block(19, "minorCode:nominal"),
+        block(20, "courtType: nominal")])
+    .abstraction(21, "Derived Data",[
+        block(22, "diversity metric"),
+        block('22.1', "Specialization class")])
+    .abstraction(23 , "Tasks", [
+        block(24, "Sort attorneys by portfolio diversity"),
+        block('code distribution','Characterize the distribution of cases over codes as generalist, specialist.'),
+        block("distribution change","Characterize changes in distributions over time."),
+        block('diversity across party','Compare diversity across party type.'),
+        block('specialist trends','Observe trends in the number of specialists.'),
+        block(25, "Count case code frequency"),
+        block(26, "compare diversity of single attorney at different points in time"),
+        block(27, "compare diversity of a single attorney to other attorneys", [
+            block (28, "Single year"),
+            block (29, "Over multiple years")]),
+        block(31, "Cluster portfolios"),
+        block(32, "Correlate case codes"),
+        block(33, "Identify exogenous events and align temporally with portfolio diversity.")])
+    .guideline(0,24)
+    .guideline(0, 'code distribution')
+    .encoding(34, 'Sorting Attorneys',[
+        block(35, 'Sortable bar chart'),
+        block(36, 'Table'),])
+    .guideline(24, 34)
+    .encoding(37, "Characterizing portfolio",[
+        block(38, "Treemap"),
+        block(39, "Self-organizing map"),
+        block(55,"Clustered Calendar"),
+        block(40,"Changes over time",[
+            block(41,"Animation"),
+            block(42,"Small multiples"),
+            block("40.1","diversity metric as bar chart")])])
+    .encoding(43,"Placeholder for comparing between/over party type. Potenital avenues for rep. include color encoding (two party types).")
+    .encoding(44, "Timeseries of number of specialists by case type")
+    .guideline("specialist trends",44)
+    .encoding(45, "Histogram of case code frequency")
+    .guideline(25,45)
+    .guideline(26,40,"Levels of detail question.")
+    .guideline(31,39)
+    .encoding(46,"Clusterings or Projections",[
+        block(47,"Self Organizing Map"),
+        block(48,"Multi-dimensional scaling"),
+        ])
+    .encoding(49,"Correlation",[
+        block(50,"Correlation matrix"),
+        block(51,"Co-occurence network"),
+        block(52, "Force directed layout")
+        ])
+    .guideline(32, 49)
+    .encoding(53,"Temporally correlated events",[
+        block(54,"Timeline")])
+    .guideline(54, 55)
+    .guideline(33, 53)
+    ;
     </div>
     <div id='canvas'></div>
     <div id='tooltip' hidden></div>
@@ -123,90 +200,214 @@ court_data
 
 // Global svg overlay
 paper = Raphael("canvas", 640, 480);
-render_bg_diagram = function(bg_diagram_instance){
+// Global diagram state
+diagramState = {};
+
+
+renderguide = function(fromObj, toObj, notes){
+    var from = fromObj.container;
+    var to = toObj.container;
+    var parent = from.parents().has(to).first(); // Find the common parent.
+    // Random horizontal offset, to avoid doing intelligent (hard) routing
+    var hoffset = ((Math.random()*50.0)+25.0);
+    // Vertical offsets (heuristic to get decent (non-overlapping) end points)
+    var toVoff = (toObj.connOffset / toObj.connCount) * to.height();
+    var fromVoff = (fromObj.connOffset / fromObj.connCount) * from.height();
+    toObj.connOffset = toObj.connOffset + 1.0;
+    fromObj.connOffset = fromObj.connOffset + 1.0;
+    // For short hand while constructing the path -- 
+    //   plus we don't really need the other information any more.
+
+    // Construct an svg path. Refer to the Raphael docs.
+    var d = "M"  + (from.offset().left + from.width() + 4) + " " + (from.offset().top + fromVoff) +
+            " L" + (parent.width() + hoffset)+               " " + (from.offset().top + fromVoff)+
+            // Notice the relative positioning step here. 
+            " l0 "                                               + ((to.offset().top + toVoff) - (from.offset().top + fromVoff)) +
+            " L" + (to.offset().left + to.width() + 4) +     " " + (to.offset().top + toVoff);
     
-    var header = function(text){
+    // Actually draw the path and set some useful properties.
+    var p = paper.path(d);
+    p.attr('stroke', 'rgba(50,50,50,0.5)')
+     .attr('stroke-width', '3')
+     .attr('arrow-end', 'classic-wide-long')
+     // Show a tooltip at the mouse location with the guide notes.
+     .mouseover(function(event){
+        if(typeof(notes) != 'undefined'){
+            var mx = event.clientX;
+            var my = event.clientY;
+        
+            $('#tooltip').html(guide.notes)
+                         .css('margin-left', mx + 25)
+                         .css('margin-top' , my - 25)
+                         .show();
+        }
+
+     })
+     // Make it go away again.
+     .mouseout(function(){
+        $('#tooltip').html('').hide();
+     });
+
+    // Cute hacky workaround for discovering between level guidelines.
+    if(from.css('background-color') != to.css('background-color')){
+        p.attr('stroke', 'rgba(0,0,250,0.5)');
+    }
+    return p;
+}
+
+render_bg_diagram = function(bg_diagram_instance){
+    var start = null;
+
+    function header(text){
         var c = $('<h4></h4>');
         c.html(text);
         return c;
+    }
+
+    function ViewBlock(dblock){
+        return new (function(){
+            var self = this;
+            self.guides = [];
+            self.connOffset = 0.0;
+            self.connCount = 1.0;
+            self.block = dblock;
+            self.container = $('<div></div>');
+            self.container.addClass('block');
+
+            self.adder = $('<span>+</span>');
+            self.adder.addClass('addlevel');
+            
+            self.close = $('<span>x</span>');
+            self.close.addClass('close');
+
+            self.connector = $('<div></div>');
+            self.connector.addClass('connector');
+            
+            self.container.append(self.adder)
+                          .append(self.connector)
+                          .append(self.close)
+                          .append($('<p>'+self.block.notes+'</p>'));
+
+            self.adder.click(function(e){
+                e.stopPropagation();
+                var b = block('','[add content]',[]);
+                self.block.content.push(b);
+                self.container.append(ViewBlock(b).container);
+            });
+
+            self.close.click(function(e){
+                e.stopPropagation();
+                self.container.remove();
+                for(var i=0; i<self.guides.length; i++){
+                    var g= self.guides[i];
+                    g.remove();
+                }
+            });
+
+            self.connector.click(function(e){
+                e.stopPropagation();
+                if(start == null){
+                    start = self;
+                    self.connector.addClass('selected');
+                }
+                else if(start == self){
+                    start = null;
+                    self.connector.removeClass('selected');
+                }
+                else if(start != null){
+                    var guide = renderguide(start, self,"")
+                    self.guides.push(guide);
+                    start.guides.push(guide);
+                    start.connector.removeClass('selected');
+                    self.connector.removeClass('selected');
+                    start.connCount = start.connCount + 1.0;
+                    self.connCount = self.connCount + 1.0; 
+                    start = null;
+                }
+            });
+
+            self.container.click(function(e){
+                e.stopPropagation();
+                self.container.attr('contentEditable','true');
+            }).focusout(function(e){
+                e.stopPropagation();
+                self.container.attr('contentEditable','false');
+                diagramState = court_data;
+                localStorage['save'] = JSON.stringify(court_data);
+            });
+
+            return self;
+        })();
+    }
+
+    function HeaderBlock(title, clsName){
+        return new(function(){
+            var self = this;
+            self.container = $('<div></div>');
+            self.container.addClass('block')
+                          .addClass(clsName)
+                          .append(title);
+            self.adder = $('<span>+</span>');
+            self.adder.addClass('addlevel');
+
+            self.adder.click(function(e){
+                e.stopPropagation();
+                self.container.append(ViewBlock(block('','[add content]')).container);
+            });
+
+            self.container.append(self.adder)
+            return self;
+        })();
     }
 
     var guideTable = {};
 
     var render_blocks = function rec (htmlement, block_list){
         var self = this;
+
         for(var i in block_list){
             (function(block){
-                var container = $('<div></div>');
-                var addElt = $('<span>+</span>');
-                addElt.addClass('addlevel');
-                var connector = $('<div></div>');
-                connector.addClass('connector');
                 
-                container.addClass('block');
-                container.click(function(e){
-                    e.stopPropagation();
-                    container.attr('contentEditable','true');
-                }).focusout(function(){
-                    e.stopPropagation();
-                    container.attr('contentEditable','false');
-                });
-                
-                container.append(addElt)
-                         .append(connector)
-                         .append($('<p>'+block.notes+'</p>'));
+                var v = ViewBlock(block);
                 
                 if(typeof(block.content) != undefined){
-                    rec(container,block.content);
+                    rec(v.container,block.content);
                 }
-                htmlement.append(container);
-                guideTable[block.name] = {'obj':        container, 
+                htmlement.append(v.container);
+                guideTable[block.name] = {'obj':        v.container, 
                                           'connCount':  0.0, 
                                           'connOffset': 0.0};
             })(block_list[i]);
         }
     }
-    var w = $(window).width()*0.40;
+    var w = $(window).width()*0.50;
 
     var diagram = $('<div></div>');
     diagram.css('position','relative');
 
-    var dc = $('<div></div>');
-    dc.addClass('block')
-      .addClass('domain')
-      .css('width', w - 160);
-    dc.append(header('Domain Characterization'));
-    render_blocks(dc, bg_diagram_instance._domain_characterization);
+    var dc = HeaderBlock(header('Domain Characterization'), 'domain');
+    dc.container.css('width', w - 160);
+    render_blocks(dc.container, bg_diagram_instance._domain_characterization);
     
-    var ab = $('<div></div>');
-    ab.addClass('block')
-      .addClass('abstraction')
-      .css('margin-left', 30)
-      .css('width', w - 130);
-    ab.append(header('Abstraction'));
-    render_blocks(ab, bg_diagram_instance._abstractions);
-
+    var ab = HeaderBlock(header('Abstraction'), 'abstraction');
+    ab.container.css('margin-left', 30)
+                .css('width', w - 130);
+    render_blocks(ab.container, bg_diagram_instance._abstractions);
     
-    var et = $('<div></div>');
-    et.addClass('block')
-      .addClass('encoding')
-      .css('margin-left', 60)
-      .css('width', w - 100);
-    et.append(header('Encodings and Techniques'));
-    render_blocks(et, bg_diagram_instance._encodings);
+    var et = HeaderBlock(header('Encodings and Techniques'), 'encoding');
+    et.container.css('margin-left', 60)
+                .css('width', w - 100);
+    render_blocks(et.container, bg_diagram_instance._encodings);
 
-    var al = $('<div></div>');
-    al.addClass('block')
-      .addClass('algorithm')
-      .css('margin-left', 90)
-      .css('width', w - 70);
-    al.append(header('Algorithms'));
-    render_blocks(al, bg_diagram_instance._algorithms);
+    var al = HeaderBlock(header('Algorithms'), 'algorithm');
+    al.container.css('margin-left', 90)
+                .css('width', w - 70);
+    render_blocks(al.container, bg_diagram_instance._algorithms);
 
-    diagram.append(dc)
-           .append(ab)
-           .append(et)
-           .append(al);
+    diagram.append(dc.container)
+           .append(ab.container)
+           .append(et.container)
+           .append(al.container);
 
     // initialize the guides with some extra layout information
     for(var i in bg_diagram_instance._guidelines){
@@ -305,18 +506,19 @@ editor.commands.addCommand({
 });
 
 editor.on('change',function(e){
-    localStorage['save'] = editor.getValue();
+    eval(editor.getValue());
+    diagramState = court_data;
+    localStorage['save'] = diagramState;
 });
 
 var onResized = function(){
     var w = $(window).width();
     var h = $(window).height();
-    $('#rendering-context').width(w*0.40);
-    $('#editor').width(w*0.48)
-                .height(h*0.98)
-                .css('margin-left',w*0.50)
-                .css('height',h*0.98); 
-    paper.setSize(w*0.45, $('#rendering-context').height());
+    $('#rendering-context').width(w*0.50);
+    $('#canvas').width(w*0.60).height($('#rendering-context').height());
+    $('#editor').width(0)
+                .height(0);
+    paper.setSize($('#canvas').width(), $('#canvas').height());
     render();
 }
 
@@ -334,7 +536,7 @@ $(function(){
     diagram.append(result);
     onResized();
     if(localStorage['save'] != ''){
-        editor.setValue(localStorage['save']);
+        editor.setValue(JSON.parse(localStorage['save']));
         render();
     }
 })
