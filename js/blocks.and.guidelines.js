@@ -15,12 +15,28 @@
 */
 block = function(name, notes, contents){
     return new (function(){
-        this.name    = name;
-        this.content = contents;
-        this.notes   = notes;
+        var self = this;
+        self.name    = name;
+        if(typeof(contents) != 'undefined')
+            self.content = contents;
+        else
+            self.content = [];
+        self.notes   = notes;
+
         return this;
     })();
-}
+};
+
+getChildren = function rec (block){
+    var result = []
+    if(block.content.length > 0){
+        for(var i in block.content){
+            result.push(block.content[i]);
+            result.concat(rec(block.content[i]));
+        }
+    }
+    return result;
+};
 
 guideline = function(from, to, notes){
     return new (function(){
@@ -29,7 +45,8 @@ guideline = function(from, to, notes){
         this.notes = notes;
         return this;
     })();
-}
+};
+
 bg_diagram = function(){
     return new (function(){
         this._domain_characterization = [ ];
