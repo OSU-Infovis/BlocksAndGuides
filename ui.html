@@ -409,6 +409,7 @@ render_bg_diagram = function redraw (bg_diagram_instance){
 
                 e.stopPropagation();
                 self.container.attr('contentEditable','false');
+                self.block.notes = self.container.find('p').first().html();
                 localStorage[activeDoc] = JSON.stringify(diagramState);
             });
 
@@ -616,7 +617,7 @@ $(function(){
     }
 
     render();
-})
+});
 </script>
 
 </html>
