@@ -39,14 +39,40 @@
     }
     #documents{
         position:absolute;
-        background-color: rgba(0,255,255,0.6);
+        background-color: rgba(200,200,200,0.2);
         border-radius: 8px;
         border: 1px grey solid;
-        padding: 5px;
-        width: 175px;
+        padding: 0px;
+        width: 255px;
         height: 400px;
         top: 0px;
         right: 0px;
+    }
+
+    #scroller{
+        position:absolute;
+        height: 310px;
+        width: 95%;
+        overflow-y:auto;
+    }
+
+    #documents ul{
+        list-style-type: none;
+        font-size: larger;
+        margin: 0px;
+        padding: 5px;
+    }
+    #documents li{
+        cursor: pointer;
+    }
+
+    #documents li.selected{
+        cursor: pointer;
+        background-color: rgba(71, 113, 255, 0.22);
+    }
+
+    #documents h4{
+        padding: 5px;
     }
     .addlevel{
         position: absolute;
@@ -99,6 +125,27 @@
         margin:0px;
     }
 
+    .button{
+        border: 1px rgba(200,200,200,0.4) solid;
+        background-color: rgba(71, 113, 255, 0.22);
+        cursor: pointer;
+        margin: 4px;
+    }
+
+    .button a{
+        text-decoration: none;
+        color: black;
+    }
+    .button a:visited{
+        text-decoration: none;
+        color:black;
+    }
+    .button:hover{
+        border: 1px rgba(200,200,200,0.4) solid;
+        cursor: pointer;
+        background-color: rgba(71, 113, 255, 0.44);
+    }
+
     .domain{
         background-color: rgba(255, 139, 35, 0.22);
     }
@@ -119,7 +166,16 @@
     <div id='rendering-context'>
     </div>
     <div id='tooltip' hidden></div>
-    <div id='documents'><div class='addlevel'>+</div><ul id="saves"></ul><div>
+    <div id='documents'>
+        <div class='addlevel'>+</div>
+        <h3>Diagrams</h3>
+        <span class='button' id='Import'><input type="file" id="input"></span><p></p>
+        <span class='button' id='Export'><a href='' target="_blank">Export</a></span> 
+        <span class='button' id='Delete'>Delete</span>
+        <div id='scroller'>
+            <ul id="saves"></ul>
+        <div>
+    </div>
 </body>
 <script>
 activeDoc = '';
@@ -144,8 +200,14 @@ renderDocs = function(){
     for(var i in localStorage){
         (function(name){
             var item = $("<li>"+name+"</li>");
+            if(name == activeDoc){ 
+                item.addClass('selected');
+            }
+
             item.click(function(){
+                $('#saves li.selected').removeClass('selected');
                 activeDoc = name;
+                item.addClass('selected');
                 render();
             });
             $('#saves').append(item);
@@ -154,6 +216,34 @@ renderDocs = function(){
 }
 
 renderDocs();
+
+$('#Delete').click(function(){
+    if(localStorage.hasOwnProperty(activeDoc)){
+        delete localStorage[activeDoc];
+        $('#saves li.selected').remove();
+    }
+});
+
+$('#input').change(function(){
+    var files = $(this)[0].files;
+    if(files.length < 1 ) return;
+    var fname = $(this)[0].files[0].name;
+    var reader = new FileReader();
+    reader.onload = function(r){
+        try{
+            diagramState = JSON.parse(r.target.result);
+            localStorage[fname] = JSON.stringify(diagramState);
+            renderDocs();
+        }catch(e){
+            console.log('Error loading file');
+        }
+    }
+    reader.readAsText($(this)[0].files[0]);
+});
+
+$('#Export a').click(function(){
+    $(this).attr('href', 'data:application/json;charset=utf-8,' + encodeURIComponent(localStorage[activeDoc]));
+});
 
 $('#documents .addlevel').click(function(){
     diagramState = bg_diagram();
@@ -469,23 +559,23 @@ render_bg_diagram = function redraw (bg_diagram_instance){
             })(bg_diagram_instance._guidelines[i]);
         }
        
-    }, 10)
+    }, 30)
     return diagram;
 }
 
 function render(){
     var w = $(window).width();
     var h = $(window).height();
-    $('#rendering-context').width(w*0.50);
+    var diagram = $('#rendering-context');
+    diagram.width(w*0.50);
     setTimeout(function(){
         $('#canvas').width(w).height($('#rendering-context').height());
         paper.setSize(w, $('#rendering-context').height());
-        var diagram = $('#rendering-context');
         diagram.empty();
         diagramState = JSON.parse(localStorage[activeDoc]);
         var result = render_bg_diagram(diagramState);
         diagram.append(result);
-    }, 50);
+    }, 80);
 }
 
 $(window).resize(render);

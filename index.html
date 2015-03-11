@@ -16,6 +16,10 @@
         display: flex;
         min-width: 850px;
         font-family: Verdana, Geneva, sans-serif;
+        size: 10px;
+    }
+    svg{
+        pointer-events:none;
     }
     #rendering-context {
         position: absolute;
@@ -24,6 +28,7 @@
     }
     #canvas{
         position: absolute;
+        pointer-events:none;
     }
     #tooltip{
         position:absolute;
@@ -117,10 +122,22 @@ render_bg_diagram = function(bg_diagram_instance){
         var self = this;
         for(var i in block_list){
             (function(block){
-                var container = $('<div></div>');
+                var container = $('<p></p>');
+                container.click(function(){
+                    e.stopPropagation();
+                    $(this).attr('contentEditable','true');
+                })
                 container.addClass('block');
-                container.html(block.notes);
-                if(typeof(block.content) != undefined){
+                var notes = $('<span>'+block.notes+'</span>');
+                container.append(notes);
+                container.focusout(function(e){
+                    e.stopPropagation();
+                    block.notes = notes.html();
+                    console.log(notes.html());
+                    console.log(bg_diagram_instance);
+                    $(this).attr('contentEditable','false');
+                })
+                if(block.content.length > 0){
                     rec(container,block.content);
                 }
                 htmlement.append(container);
@@ -225,7 +242,6 @@ render_bg_diagram = function(bg_diagram_instance){
                                      .css('margin-top' , my - 25)
                                      .show();
                     }
-
                  })
                  // Make it go away again.
                  .mouseout(function(){
@@ -239,7 +255,7 @@ render_bg_diagram = function(bg_diagram_instance){
             })(bg_diagram_instance._guidelines[i]);
         }
        
-    }, 10)
+    }, 50)
     return diagram;
 }
 
