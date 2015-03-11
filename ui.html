@@ -268,6 +268,7 @@ tooltip = function($p, guide){
 
         self.container = $('<div></div>');
         self.container.addClass('tooltip')
+                      .hide()
                       .html(typeof(guide.notes) == 'undefined'? '[add content]':guide.notes)
                       .click(function(){
                         self.container.attr('contentEditable','true');
@@ -545,7 +546,6 @@ render_bg_diagram = function redraw (bg_diagram_instance){
         for(var i in bg_diagram_instance._guidelines){
             (function(guide){
                 var tt = tooltip($('body'),guide);
-                tt.toggle();
                 var from = guideTable[guide.from];
                 var to = guideTable[guide.to];
                 var parent = from.obj.parents().has(to.obj).first(); // Find the common parent.
