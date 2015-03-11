@@ -30,13 +30,6 @@
         position: absolute;
         pointer-events: visiblestroke;
     }
-    #tooltip{
-        position:absolute;
-        background-color: rgba(255,255,255,0.6);
-        border-radius: 8px;
-        border: 1px grey solid;
-        padding: 5px;
-    }
     #documents{
         position:absolute;
         background-color: rgba(200,200,200,0.2);
@@ -72,6 +65,13 @@
     }
 
     #documents h4{
+        padding: 5px;
+    }
+    .tooltip{
+        position:absolute;
+        background-color: rgba(255,255,255,0.6);
+        border-radius: 8px;
+        border: 1px grey solid;
         padding: 5px;
     }
     .addlevel{
@@ -259,6 +259,43 @@ paper = Raphael("canvas", 640, 480);
 if(activeDoc == ''){
     diagramState = bg_diagram();
 }
+
+tooltip = function($p, guide){
+    return new(function(){
+        var self = this;
+
+        self.guide = guide;
+
+        self.container = $('<div></div>');
+        self.container.addClass('tooltip')
+                      .html(typeof(guide.notes) == 'undefined'? '[add content]':guide.notes)
+                      .click(function(){
+                        self.container.attr('contentEditable','true');
+                      })
+                      .focusout(function(){
+                        self.guide.notes = self.container.html();
+                        localStorage[activeDoc] = JSON.stringify(diagramState);
+                        self.container.attr('contentEditable','false');
+                      });
+
+        self.position = function(x,y){
+            self.container.css('top',y).css('left',x);
+            return self;
+        };
+
+        self.toggle = function(){
+            self.container.slideToggle();
+        };
+
+        self.html = function(a){
+            if(typeof(a) != 'undefined')
+                self.guide.notes = a;
+            return self.container.html(a);
+        }
+
+        $p.append(self.container);
+    })();
+};
 
 
 renderguide = function(guide){
@@ -506,7 +543,8 @@ render_bg_diagram = function redraw (bg_diagram_instance){
         paper.clear();
         for(var i in bg_diagram_instance._guidelines){
             (function(guide){
-                
+                var tt = tooltip($('body'),guide);
+                tt.toggle();
                 var from = guideTable[guide.from];
                 var to = guideTable[guide.to];
                 var parent = from.obj.parents().has(to.obj).first(); // Find the common parent.
@@ -535,18 +573,12 @@ render_bg_diagram = function redraw (bg_diagram_instance){
                  .attr('stroke-width', '3')
                  .attr('arrow-end', 'classic-wide-long')
                  // Show a tooltip at the mouse location with the guide notes.
-                 .mouseover(function(event){
-                    if(typeof(guide.notes) != 'undefined'){
-                        var mx = event.clientX;
-                        var my = event.clientY;
-                    
-                        $('#tooltip').html(guide.notes)
-                                     .css('margin-left', mx + 25)
-                                     .css('margin-top' , my - 25)
-                                     .show();
-                    }
-
-                 })
+                 .click(function(event){
+                    tt.toggle();
+                    var mx = event.clientX;
+                    var my = event.clientY;
+                    tt.position(mx + 25, my - 25);
+                })
                  // Make it go away again.
                  .mouseout(function(){
                     $('#tooltip').html('').hide();
