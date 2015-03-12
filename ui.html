@@ -24,11 +24,15 @@
         position: absolute;
         display: initial;
         padding-right:100px;
+        pointer-events: all;
+    }
+
+    svg{
+        position: absolute;
         pointer-events: none;
     }
-    #canvas{
-        position: absolute;
-        pointer-events: visiblestroke;
+    path{
+        pointer-events:visibleStroke;
     }
     #documents{
         position:absolute;
@@ -161,11 +165,9 @@
     </style>
 </head>
 
-<body>
-    <div id='canvas'></div>
-    <div id='rendering-context'>
-    </div>
-    <div id='tooltip' hidden></div>
+<body id='body'>
+    <!-- <div id='canvas'></div> -->
+    <div id='rendering-context'></div>
     <div id='documents'>
         <div class='addlevel'>+</div>
         <h3>Diagrams</h3>
@@ -254,7 +256,7 @@ $('#documents .addlevel').click(function(){
 });
 
 // Global svg overlay
-paper = Raphael("canvas", 640, 480);
+paper = Raphael(0,0,640, 480);
 // Global diagram state
 if(activeDoc == ''){
     diagramState = bg_diagram();
@@ -603,7 +605,7 @@ function render(){
     diagram.width(w*0.50);
     setTimeout(function(){
         $('#canvas').width(w).height($('#rendering-context').height());
-        paper.setSize(w, $('#rendering-context').height());
+        paper.setSize(w*0.60, $('#rendering-context').height());
         diagram.empty();
         diagramState = JSON.parse(localStorage[activeDoc]);
         var result = render_bg_diagram(diagramState);
@@ -612,6 +614,10 @@ function render(){
 }
 
 $(window).resize(render);
+
+$('svg').on('click', function(e){
+    $('#rendering-context').trigger('click', e);
+});
 
 function getUrlVars()
 {
@@ -624,6 +630,8 @@ function getUrlVars()
     }
     return vars;
 }
+
+
 
 $(function(){
     var diagram = $('#rendering-context');
