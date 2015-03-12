@@ -176,7 +176,7 @@
         <span class='button' id='Delete'>Delete</span>
         <div id='scroller'>
             <ul id="saves"></ul>
-        <div>
+        </div>
     </div>
 </body>
 <script>
@@ -257,6 +257,7 @@ $('#documents .addlevel').click(function(){
 
 // Global svg overlay
 paper = Raphael(0,0,640, 480);
+$('body').append($('<div id="tooltips"></div>'));
 // Global diagram state
 if(activeDoc == ''){
     diagramState = bg_diagram();
@@ -444,11 +445,11 @@ render_bg_diagram = function redraw (bg_diagram_instance){
 
             self.container.click(function(e){
                 e.stopPropagation();
-                self.container.attr('contentEditable','true');
+                self.container.find('p').first().attr('contentEditable','true');
             }).focusout(function(e){
 
                 e.stopPropagation();
-                self.container.attr('contentEditable','false');
+                self.container.find('p').first().attr('contentEditable','false');
                 self.block.notes = self.container.find('p').first().html();
                 localStorage[activeDoc] = JSON.stringify(diagramState);
             });
@@ -547,7 +548,7 @@ render_bg_diagram = function redraw (bg_diagram_instance){
         paper.clear();
         for(var i in bg_diagram_instance._guidelines){
             (function(guide){
-                var tt = tooltip($('body'),guide);
+                var tt = tooltip($('#tooltips'),guide);
                 var from = guideTable[guide.from];
                 var to = guideTable[guide.to];
                 var parent = from.obj.parents().has(to.obj).first(); // Find the common parent.
@@ -579,7 +580,8 @@ render_bg_diagram = function redraw (bg_diagram_instance){
                  .click(function(event){
                     tt.toggle();
                     var mx = event.clientX;
-                    var my = event.clientY;
+                    var my = event.clientY + $(window).scrollTop();
+
                     tt.position(mx + 25, my - 25);
                 })
                  // Make it go away again.
@@ -614,10 +616,6 @@ function render(){
 }
 
 $(window).resize(render);
-
-$('svg').on('click', function(e){
-    $('#rendering-context').trigger('click', e);
-});
 
 function getUrlVars()
 {
