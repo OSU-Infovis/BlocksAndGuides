@@ -266,6 +266,8 @@ if(activeDoc == ''){
 tooltip = function($p, guide){
     return new(function(){
         var self = this;
+        self.editing = 0;
+        self.showing = 0;
 
         self.guide = guide;
 
@@ -288,9 +290,36 @@ tooltip = function($p, guide){
         };
 
         self.toggle = function(){
-            self.container.slideToggle();
+		      // state variable set
+	      if(self.showing == 1 && self.editing ==0 ){
+		      self.editing = 1;
+		      }
+		      else if(self.showing == 0 && self.editing==0){
+		      self.container.slideToggle();
+		      self.editing = 1;
+		      }
+		      else if(self.showing == 1 && self.editing == 1){
+		      self.editing = 0;
+		      self.container.slideToggle();
+		      }else if(self.showing == 0 && self.editing==1) {
+		      alert("Not possible!");
+		      }
+	
         };
 
+        self.show = function() {
+                   if(self.editing != 1){
+		          self.showing = 1;
+		          self.container.show();
+		      }
+		     
+        };
+        self.hide = function() {
+		      if(self.editing == 0){
+		           self.container.hide();
+		           self.showing = 0;
+		      }
+	};	      
         self.html = function(a){
             if(typeof(a) != 'undefined')
                 self.guide.notes = a;
@@ -305,6 +334,7 @@ tooltip = function($p, guide){
 renderguide = function(guide){
     var from = fromObj.container;
     var to = toObj.container;
+		      var editing = 0;
     var parent = from.parents().has(to).first(); // Find the common parent.
     // Random horizontal offset, to avoid doing intelligent (hard) routing
     var hoffset = ((Math.random()*50.0)+25.0);
@@ -578,17 +608,25 @@ render_bg_diagram = function redraw (bg_diagram_instance){
                  .attr('arrow-end', 'classic-wide-long')
                  // Show a tooltip at the mouse location with the guide notes.
                  .click(function(event){
+		    
                     tt.toggle();
                     var mx = event.clientX;
                     var my = event.clientY + $(window).scrollTop();
 
                     tt.position(mx + 25, my - 25);
                 })
-                 // Make it go away again.
-                 .mouseout(function(){
-                    $('#tooltip').html('').hide();
-                 });
-
+	         .mouseover(function(event){
+				 var mx = event.clientX;
+				 var my = event.clientY + $(window).scrollTop();
+				 
+				 tt.position(mx + 25, my - 25);
+				 tt.show();
+				 })
+		.mouseout(function(event) {
+				 tt.hide();
+				 
+				 });
+				 
                 // Cute hacky workaround for discovering between level guidelines.
                 if(from.css('background-color') != to.css('background-color')){
                     p.attr('stroke', 'rgba(0,0,250,0.5)');
