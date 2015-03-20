@@ -1,4 +1,5 @@
 activeDoc = '';
+var guideTable = {};  //RAM: This probably should not be global
 
 // Utility functions - Nels will refactor these out
 $.anyEq = function (a, b) {
@@ -35,66 +36,69 @@ renderDocs = function(){
             $('#saves').append(item);
         })(i);
     }
+
+
+    //renderDocs();
+    
+    $('#Delete').click(function(){
+	if(localStorage.hasOwnProperty(activeDoc)){
+            delete localStorage[activeDoc];
+            $('#saves li.selected').remove();
+	}
+    });
+    
+    $('#input').change(function(){
+	var files = $(this)[0].files;
+	if(files.length < 1 ) return;
+	var fname = $(this)[0].files[0].name;
+	var reader = new FileReader();
+	reader.onload = function(r){
+            try{
+		diagramState = JSON.parse(r.target.result);
+		localStorage[fname] = JSON.stringify(diagramState);
+		renderDocs();
+            }catch(e){
+		console.log('Error loading file');
+            }
+	}
+	reader.readAsText($(this)[0].files[0]);
+    });
+    
+    $('#Export a').click(function(){
+	$(this).attr('href', 'data:application/json;charset=utf-8,' + encodeURIComponent(localStorage[activeDoc]));
+    });
+    
+    $('#documents .addlevel').click(function(){
+	diagramState = bg_diagram();
+	activeDoc = prompt('New diagram name?');
+	if(activeDoc == null) return;
+	localStorage[activeDoc] = JSON.stringify(diagramState);
+	renderDocs();
+    });
 }
 
-renderDocs();
 
-$('#Delete').click(function(){
-    if(localStorage.hasOwnProperty(activeDoc)){
-        delete localStorage[activeDoc];
-        $('#saves li.selected').remove();
-    }
-});
-
-$('#input').change(function(){
-    var files = $(this)[0].files;
-    if(files.length < 1 ) return;
-    var fname = $(this)[0].files[0].name;
-    var reader = new FileReader();
-    reader.onload = function(r){
-        try{
-            diagramState = JSON.parse(r.target.result);
-            localStorage[fname] = JSON.stringify(diagramState);
-            renderDocs();
-        }catch(e){
-            console.log('Error loading file');
-        }
-    }
-    reader.readAsText($(this)[0].files[0]);
-});
-
-$('#Export a').click(function(){
-    $(this).attr('href', 'data:application/json;charset=utf-8,' + encodeURIComponent(localStorage[activeDoc]));
-});
-
-$('#documents .addlevel').click(function(){
-    diagramState = bg_diagram();
-    activeDoc = prompt('New diagram name?');
-    if(activeDoc == null) return;
-    localStorage[activeDoc] = JSON.stringify(diagramState);
-    renderDocs();
-});
-
+//RAM:  Moved all of this to the kickoff function at the bottom
 // Global svg overlay
-$(document).ready(function() {//RAM: Make this happen only after things are loaded and ready
-    paper = Raphael(0,0,640, 480);
-    $('body').append($('<div id="tooltips"></div>'));
-});
+//$(document).ready(function() {//RAM: Make this happen only after things are loaded and ready
+//    paper = Raphael(0,0,640, 480);
+//    $('body').append($('<div id="tooltips"></div>'));
+///});
 
 
 // Global diagram state
-if(activeDoc == ''){
-    diagramState = bg_diagram();
-}
+//if(activeDoc == ''){
+//    diagramState = bg_diagram();
+//}
 
 // Function to draw a tooltip in the correctplace with correct content
 function tooltip ($p, pguide) {
-
+    
     var editing = 0;
     var showing = 0;
     var container = $('<div></div>');
     var guide = pguide;
-
+    
     var tipFunc = function() {
         container.addClass('tooltip')
             .hide()
@@ -178,9 +182,10 @@ function tooltip ($p, pguide) {
 
 
 
-render_bg_diagram = function redraw (bg_diagram_instance){
+render_b_diagram = function redrawb (bg_diagram_instance){
     var start = null;
     $('#rendering-context').empty();
+    
     function header(text){
         var c = $('<h4></h4>');
         c.html(text);
@@ -310,8 +315,8 @@ render_bg_diagram = function redraw (bg_diagram_instance){
         })();
     }
 
-    var guideTable = {};
 
+    
     var render_blocks = function rec (container, block_list){
         var p = {};
         p.container = container;
@@ -331,50 +336,55 @@ render_bg_diagram = function redraw (bg_diagram_instance){
             })(block_list[i]);
         }
     }
+    
+    
     var w = $(window).width()*0.50;
-
+    
     var diagram = $('<div></div>');
     diagram.css('position','relative');
-
+    
     var dc = HeaderBlock(header('Domain Characterization'), 'domain', bg_diagram_instance._domain_characterization);
     dc.container.css('width', w - 160);
     render_blocks(dc.container, bg_diagram_instance._domain_characterization);
     
     var ab = HeaderBlock(header('Abstraction'), 'abstraction', bg_diagram_instance._abstractions);
     ab.container.css('margin-left', 30)
-                .css('width', w - 130);
+        .css('width', w - 130);
     render_blocks(ab.container, bg_diagram_instance._abstractions);
     
     var et = HeaderBlock(header('Encodings and Techniques'), 'encoding', bg_diagram_instance._encodings);
     et.container.css('margin-left', 60)
-                .css('width', w - 100);
+        .css('width', w - 100);
     render_blocks(et.container, bg_diagram_instance._encodings);
-
+    
     var al = HeaderBlock(header('Algorithms'), 'algorithm', bg_diagram_instance._algorithms);
     al.container.css('margin-left', 90)
-                .css('width', w - 70);
+        .css('width', w - 70);
     render_blocks(al.container, bg_diagram_instance._algorithms);
-
+    
     diagram.append(dc.container)
-           .append(ab.container)
-           .append(et.container)
-           .append(al.container);
-
+        .append(ab.container)
+        .append(et.container)
+        .append(al.container);
+    
     // initialize the guides with some extra layout information
     for(var i in bg_diagram_instance._guidelines){
         var g = bg_diagram_instance._guidelines[i];
-
+	
         guideTable[g.to]['connCount'] = guideTable[g.to]['connCount'] + 1.0;
         guideTable[g.from]['connCount'] = guideTable[g.from]['connCount'] + 1.0;
     }
+    return diagram; 
+  }
 
+render_g_diagram = function redrawg (bg_diagram_instance, diagram){
     // Then render the guidelines.
     // Since everything else has to happen (render) in order to resolve 
     //   the positions set a timeout for a few milliseconds after.
     setTimeout(function(){
         paper.clear();
         for(var i in bg_diagram_instance._guidelines){
-            (function(guide){
+	    (function(guide){
                 var tt = tooltip($('#tooltips'),guide)();
 		var from = guideTable[guide.from];
                 var to = guideTable[guide.to];
@@ -390,29 +400,29 @@ render_bg_diagram = function redraw (bg_diagram_instance){
                 //   plus we don't really need the other information any more.
                 to = to.obj;
                 from = from.obj;
-
+		
                 // Construct an svg path. Refer to the Raphael docs.
                 var d = "M"  + (from.offset().left + from.width() + 4) + " " + (from.offset().top + fromVoff) +
-                    " L" + (parent.width() + hoffset)+               " " + (from.offset().top + fromVoff)+
-                    // Notice the relative positioning step here. 
-                    " l0 "                                               + ((to.offset().top + toVoff) - (from.offset().top + fromVoff)) +
-                    " L" + (to.offset().left + to.width() + 4) +     " " + (to.offset().top + toVoff);
+		    " L" + (parent.width() + hoffset)+               " " + (from.offset().top + fromVoff)+
+		    // Notice the relative positioning step here. 
+		    " l0 "                                               + ((to.offset().top + toVoff) - (from.offset().top + fromVoff)) +
+		    " L" + (to.offset().left + to.width() + 4) +     " " + (to.offset().top + toVoff);
                 
                 // Actually draw the path and set some useful properties.
                 var p = paper.path(d);
                 p.attr('stroke', 'rgba(50,50,50,0.5)')
-                    .attr('stroke-width', '3')
-                    .attr('arrow-end', 'classic-wide-long')
+		    .attr('stroke-width', '3')
+		    .attr('arrow-end', 'classic-wide-long')
                 // Show a tooltip at the mouse location with the guide notes.
-                    .click(function(event){
+		    .click(function(event){
 			
 			
 			var mx = event.clientX;
-                    var my = event.clientY + $(window).scrollTop();
+			var my = event.clientY + $(window).scrollTop();
 			tt.position(mx + 25, my - 25)
 			tt.toggle();
-                    })
-	            .mouseover(function(event){
+		    })
+		    .mouseover(function(event){
 			var mx = event.clientX;
 			var my = event.clientY + $(window).scrollTop();
 			
@@ -426,29 +436,31 @@ render_bg_diagram = function redraw (bg_diagram_instance){
 		
                 // Cute hacky workaround for discovering between level guidelines.
                 if(from.css('background-color') != to.css('background-color')){
-                    p.attr('stroke', 'rgba(0,0,250,0.5)');
+		    p.attr('stroke', 'rgba(0,0,250,0.5)');
                 }
-            })(bg_diagram_instance._guidelines[i]);
+	    })(bg_diagram_instance._guidelines[i]);
         }
-       
-    }, 30)
+	
+    }, 60)
     return diagram;
 }
 
+    
 //Main render function
 function render(){
     var w = $(window).width();
     var h = $(window).height();
     var diagram = $('#rendering-context');
     diagram.width(w*0.50);
-    setTimeout(function(){
-        $('#canvas').width(w).height($('#rendering-context').height());
-        paper.setSize(w*0.60, $('#rendering-context').height());
-        diagram.empty();
-        diagramState = JSON.parse(localStorage[activeDoc]);
-        var result = render_bg_diagram(diagramState);
-        diagram.append(result);
-    }, 80);
+
+    diagram.empty();
+    diagramState = JSON.parse(localStorage[activeDoc]);
+    var blocks = render_b_diagram(diagramState);  //RAM:  SHould split this into render block then render guides;  set canvas ,paper, etc. AFTER you render blocks
+    diagram.append(blocks);
+    $('#canvas').width(w).height($('#rendering-context').height());
+    paper.setSize(w*0.60, $('#rendering-context').height());    
+   var guides = render_g_diagram(diagramState,blocks);
+    diagram.append(guides);
 }
 
 $(window).resize(render);
@@ -466,8 +478,21 @@ function getUrlVars()
 }
 
 
+// This function kicks everything off!
+$(document).ready(function () {
+//$(function(){
 
-$(function(){
+    // Global svg overlay
+    paper = Raphael(0,0,640, 480);
+    $('body').append($('<div id="tooltips"></div>'));
+    
+
+    // Global diagram state
+    if(activeDoc == ''){
+	diagramState = bg_diagram();
+    }
+    
+
     var diagram = $('#rendering-context');
     diagram.empty();
     var params = getUrlVars();
