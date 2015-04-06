@@ -1,5 +1,13 @@
 activeDoc = '';
-var guideTable = {};  //RAM: This probably should not be global
+
+storeDiagram = function(bg_diagram_instance){
+    localStorage[activeDoc] = JSON.stringify(bg_diagram_instance);
+}
+
+loadDiagram = function(){
+    return JSON.parse(localStorage[activeDoc]);
+}
+
 
 //Render the 'menu' area
 renderDocs = function(){
@@ -49,15 +57,15 @@ renderDocs = function(){
     });
     
     $('#Export a').click(function(){
-    $(this).attr('href', 'data:application/json;charset=utf-8,' + encodeURIComponent(localStorage[activeDoc]));
+        $(this).attr('href', 'data:application/json;charset=utf-8,' + encodeURIComponent(localStorage[activeDoc]));
     });
     
     $('#documents .addlevel').click(function(){
-    diagramState = bg_diagram();
-    activeDoc = prompt('New diagram name?');
-    if(activeDoc == null) return;
-    localStorage[activeDoc] = JSON.stringify(diagramState);
-    renderDocs();
+        diagramState = bg_diagram();
+        activeDoc = prompt('New diagram name?');
+        if(activeDoc == null) return;
+        localStorage[activeDoc] = JSON.stringify(diagramState);
+        renderDocs();
     });
 }
 
@@ -365,7 +373,7 @@ render_guides = function redrawg (bg_diagram_instance, guideTable){
             tt.close.click(function(e){
                 e.stopPropagation();
                 remove(bg_diagram_instance._guidelines, guide);
-                localStorage[activeDoc] = JSON.stringify(bg_diagram_instance);
+                storeDiagram(bg_diagram_instance);
                 render();
                 tt.remove();
             });
@@ -431,7 +439,7 @@ function render(){
     
     diagram.width(w*0.50);
     diagram.empty();
-    diagramState = JSON.parse(localStorage[activeDoc]);
+    diagramState = loadDiagram();
     var blockResult = render_blocks(diagramState);  //RAM:  SHould split this into render block then render guides;  set canvas ,paper, etc. AFTER you render blocks
     diagram.append(blockResult.diagram);
     var rch = $('#rendering-context').height();
@@ -479,19 +487,19 @@ $(document).ready(function () {
     if(params.hasOwnProperty('name')){
         activeDoc = params.name;
         if(localStorage.hasOwnProperty(activeDoc)){
-            diagramState = JSON.parse(localStorage[activeDoc]);
-            localStorage[activeDoc] = JSON.stringify(diagramState);
+            diagramState = loadDiagram()
+            storeDiagram(diagramState);
             renderDocs();
         }else{
             diagramState = bg_diagram();
-            localStorage[activeDoc] = JSON.stringify(diagramState);
+            storeDiagram(diagramState);
             renderDocs();
         }
     }else{
         diagramState = bg_diagram();
         activeDoc = prompt('New diagram name?');
         if(activeDoc == null) return;
-        localStorage[activeDoc] = JSON.stringify(diagramState);
+        storeDiagram(diagramState);
         renderDocs();
     }
 
