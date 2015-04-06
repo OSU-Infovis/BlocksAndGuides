@@ -141,7 +141,7 @@ function tooltip ($p, pguide) {
 
     self.hide = function() {
     //console.log("Hide: editig = " + editing + " showing = " + showing); 
-        if(editing == 0){
+        if(!editing){
             container.hide();
             showing = false;
         }
