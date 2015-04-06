@@ -63,91 +63,100 @@ renderDocs = function(){
 
 // Function to draw a tooltip
 function tooltip ($p, pguide) {
-    
-    var editing = 0;
-    var showing = 0;
+    return new (function(){
+    var self = this;
+    var editing = false;
+    var showing = false;
     var container = $('<div></div>');
+    var content = $('<p></p>');
     var guide = pguide;
     
-    var tipFunc = function() {
-        container.addClass('tooltip')
-            .hide()
-            .html(typeof(guide.notes) == 'undefined'? '[add content]':guide.notes)
-            .click(function(){
-                container.attr('contentEditable','true');
+    self.close = $('<span>x</span>')
+    self.close.addClass('close');
+
+    content.click(function(e){
+                e.stopPropagation();
+                content.attr('contentEditable','true');
             })
             .focusout(function(){
-                guide.notes = container.html();
+                guide.notes = content.html();
                 localStorage[activeDoc] = JSON.stringify(diagramState);
-                container.attr('contentEditable','false');
-            });
-    return tipFunc;
-    }
+                content.attr('contentEditable','false');
+            })
+            .html(typeof(guide.notes) == 'undefined'? '[add content]':guide.notes);
+
+    container.addClass('tooltip')
+             .hide()
+             .append(content)
+             .append(self.close);
+    
+
     
     
-    tipFunc.position = function(x,y){
-    //console.log("Entering Position: editig = " + editing + " showing = " + showing); 
+    self.position = function(x,y){
+        //console.log("Entering Position: editig = " + editing + " showing = " + showing); 
         container.css('top',y).css('left',x);
-    //console.log("Exiting Position: editig = " + editing + " showing = " + showing); 
-    //console.log("========");
-    
-    return tipFunc;
+        //console.log("Exiting Position: editig = " + editing + " showing = " + showing); 
+        //console.log("========");
+        return self;
     };
     
-    tipFunc.toggle = function(){
-    //console.log("Toggle: editig = " + editing + " showing = " + showing); 
-    // state variable set
-    if(showing == 1 && editing ==0 ){
-        editing = 1;
-        container.show();
-    }else if(showing == 0 && editing==0){
-        container.slideToggle();
-        editing = 1;
-        showing = 1;
-    }
-    else if(showing == 1 && editing == 1){
-        editing = 0;
-        showing = 0;
-        container.slideToggle();
-    }else if(showing == 0 && editing==1) {
-        alert("Not possible!");
-    }
-    //console.log("Exiting toggle: editig = " + editing + " showing = " + showing); 
-    //console.log("========");
-    return tipFunc;
+    self.toggle = function(){
+        if(showing && !editing){
+            editing = !editing;
+            container.show();
+        }else if(!showing && !editing){
+            container.slideToggle();
+            editing = !editing;
+            showing = !showing;
+        }
+        else if(showing && editing){
+            editing = !editing;
+            showing = !showing;
+            container.slideToggle();
+        }else if(!showing && editing) {
+            alert("Not possible!");
+        }
+        return self;
     };
     
-    tipFunc.show = function() {
+    self.show = function() {
     //console.log("Show: editig = " + editing + " showing = " + showing); 
-        if(editing != 1){
-        showing = 1;
-        container.show();
-    }
+        if(!editing){
+            showing = true;
+            container.show();
+        }
     //console.log("Exiting Show: editig = " + editing + " showing = " + showing); 
     //console.log("========");
-    return tipFunc;
+        return self;
     };
 
-    tipFunc.hide = function() {
+    self.hide = function() {
     //console.log("Hide: editig = " + editing + " showing = " + showing); 
-    if(editing == 0){
-        container.hide();
-        showing = 0;
-    }
-    //console.log("Exiting Hide: editig = " + editing + " showing = " + showing); 
-    //console.log("========");
-    return tipFunc;
+        if(editing == 0){
+            container.hide();
+            showing = false;
+        }
+        //console.log("Exiting Hide: editig = " + editing + " showing = " + showing); 
+        //console.log("========");
+        return self;
     };        
 
-    tipFunc.html = function(a){
-    if(typeof(a) != 'undefined')
+    self.html = function(a){
+        if(typeof(a) != 'undefined'){
             guide.notes = a;
-        return container.html(a);
+        }
+        return content.html(a);
     }
     
+    self.remove = function(){
+        container.parent().find(container).remove();
+    }
+
     $p.append(container);
     
-    return tipFunc;
+    return self;
+    })();
 };
 
 
@@ -352,7 +361,14 @@ render_guides = function redrawg (bg_diagram_instance, guideTable){
     paper.clear();
     for(var i in bg_diagram_instance._guidelines){
         (function(guide){
-            var tt = tooltip($('#tooltips'),guide)();
+            var tt = tooltip($('#tooltips'),guide);
+            tt.close.click(function(e){
+                e.stopPropagation();
+                remove(bg_diagram_instance._guidelines, guide);
+                localStorage[activeDoc] = JSON.stringify(bg_diagram_instance);
+                render();
+                tt.remove();
+            });
             var from = guideTable[guide.from];
             var to = guideTable[guide.to];
             var parent = from.obj.parents().has(to.obj).first(); // Find the common parent.

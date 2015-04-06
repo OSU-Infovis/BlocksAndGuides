@@ -58,13 +58,15 @@ path{
 #documents h4{
     padding: 5px;
 }
+
 .tooltip{
     position:absolute;
     background-color: rgba(255,255,255,0.6);
-    border-radius: 8px;
+    border-radius: 5px;
     border: 1px grey solid;
     padding: 5px;
 }
+
 .addlevel{
     position: absolute;
     top:-4px;
