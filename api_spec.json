@@ -1,0 +1,51 @@
+// Hypothetical API design for storing, updating, and searching NBG diagrams.
+{
+    'search_request': 'query+string',
+
+    'search_response': {
+        [{
+            'design_guid': '',
+            'design_name': '',
+            'description': '',
+            'optional_link': '',
+            'rating': '',
+            'user_name': '',
+        }, ]
+    },
+
+
+    'create_design': {
+        'design_name': '',   // Nice human readable name
+        'description': '',   // Human readable description
+        'optional_link': '', // Optional link to implementation of the design
+        'tags': [],          // List of user specified tags for the design (searchable)
+        'design': ''
+    },
+
+    'update_design': {
+        'design_guid': '',
+        'optional_design_name': '',
+        'optional_description': '',
+        'optional_optional_link': '',
+        'optional_tags': [],
+        'optiona_design': ''
+    }
+
+
+    'design_request': {
+        'design_guid': '' // Plain and simple.
+    },
+
+    'design_response': {
+        'design_guid': '',   // Unique identifier for a design
+        'design_name': '',   // Nice human readable name (searchable)
+        'description': '',   // Human readable description (searchable)
+        'optional_link': '', // Optional link to implementation of the design (searchable)
+        'tags': [],          // List of user specified tags for the design
+        'rating': '',        // Design quality.
+        'created_date': '',  // Timestamp of the create_design call to the server 
+        'last_modified': '', // Timestamp of the last update_design call
+        'user_name': '',     // User handle, self selected.
+    },
+
+}
