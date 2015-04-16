@@ -46,6 +46,10 @@
         'created_date': '',  // Timestamp of the create_design call to the server 
         'last_modified': '', // Timestamp of the last update_design call
         'user_name': '',     // User handle, self selected.
+        'design': ''
     },
 
 }
+
+
+create_design('test', 'test', '', ['test'], '4b6af0c5-289f-4a54-8a3d-332b26b46fb3', {})
